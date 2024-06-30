@@ -1,16 +1,43 @@
-import { View, Text, StyleSheet,TextInput, Button } from "react-native";
-import { Stack } from "expo-router";
+import { View, Text, StyleSheet,TextInput, Button, Alert } from "react-native";
+import { Redirect, Stack, router } from "expo-router";
 import React, { useState } from "react";
 import { Feather } from "@expo/vector-icons";
+import { useAuth } from "../providers/AuthProvider";
+import { supabase } from "../lib/supabase";
 
 export default function CreatePoll() {
     const [question, setQuestion] = useState('')
     const [options, setOptions] = useState(['', ''])
-    
+    const {session, user} = useAuth()
+    const [error, setError] = useState('')
     const createPoll = () =>{
+        setError('');
+        if (!question){
+            setError('Please enter a question')
+            return
+        }
+        const validOptions = options.filter((o) => !!o);
+        if (validOptions.length < 2){
+            setError('Please enter at least two options')
+            return
+        }
+        
+        const { data, error } = await supabase
+        .from('Polls')
+        .insert([{question, options: validOptions}])
+        .select()
+        if (error){
+            Alert.alert("Failed to create the poll")
+            console.log(error)
+            return
+        }
+        router.back();
         console.warn('Create Poll')
     }
     
+    if (!user){
+        return <Redirect href="/login"/>
+    }
     return (
         <View style = {styles.container}>
             <Stack.Screen options={{title: 'Create Poll'}}/>
@@ -33,6 +60,7 @@ export default function CreatePoll() {
             ))}
             <Button title="Add Option" onPress={() => setOptions([...options, ''])}/>
             <Button title="Create Poll" onPress={(createPoll) => {}}/>   
+                <Text style = {{color: 'red'}}>{error}</Text>
         </View>
     )
 }
